@@ -420,7 +420,7 @@ elif menu == "Dashboard":
                 height=600,       # tinggi kanvas = 400 (sama spt histogram)
                 background_color="white",
                 colormap="Blues",
-                max_words=50
+                max_words=20
             ).generate(all_text)
 
             # ukuran figur matplotlib, pakai rasio sama
