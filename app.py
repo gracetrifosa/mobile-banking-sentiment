@@ -381,7 +381,7 @@ elif menu == "Dashboard":
     else:
         st.info("Tidak ada data untuk ditampilkan.")
 
-    # ============================
+        # ============================
     # COMMENT LENGTH + WORD CLOUD (SIDE BY SIDE, SAME SIZE)
     # ============================
 
@@ -390,7 +390,7 @@ elif menu == "Dashboard":
 
         # --- KIRI: Comment Length Distribution ---
         with col_len:
-            st.markdown("Comment Length Distribution")
+            st.markdown("### Comment Length Distribution")
             data_dash["length"] = data_dash["review"].astype(str).apply(len)
 
             fig = px.histogram(
@@ -404,26 +404,27 @@ elif menu == "Dashboard":
             fig.update_layout(
                 legend=dict(x=0.92, y=0.95, font=dict(size=12)),
                 margin=dict(l=10, r=10, t=30, b=20),
-                height=400                      
+                height=400        # tinggi plot histogram
             )
 
             st.plotly_chart(fig, use_container_width=True)
 
         # --- KANAN: Word Cloud ---
         with col_wc:
-            st.markdown(" Word Cloud – Most Frequent Words")
+            st.markdown("### Word Cloud – Most Frequent Words")
 
             all_text = " ".join(data_dash["review"].astype(str).tolist())
 
             wc = WordCloud(
-                width=625,                     
-                height=385,
+                width=800,        # lebar kanvas
+                height=400,       # tinggi kanvas = 400 (sama spt histogram)
                 background_color="white",
                 colormap="Blues",
                 max_words=50
             ).generate(all_text)
 
-            fig_wc, ax_wc = plt.subplots(figsize=(8, 4))  
+            # ukuran figur matplotlib, pakai rasio sama
+            fig_wc, ax_wc = plt.subplots(figsize=(8, 4))
             ax_wc.imshow(wc, interpolation="bilinear")
             ax_wc.axis("off")
 
