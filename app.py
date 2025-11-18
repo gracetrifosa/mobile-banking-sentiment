@@ -417,7 +417,7 @@ elif menu == "Dashboard":
 
             wc = WordCloud(
                 width=800,        # lebar kanvas
-                height=400,       # tinggi kanvas = 400 (sama spt histogram)
+                height=800,       # tinggi kanvas = 400 (sama spt histogram)
                 background_color="white",
                 colormap="Blues",
                 max_words=50
