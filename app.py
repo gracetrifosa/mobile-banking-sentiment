@@ -381,6 +381,29 @@ elif menu == "Dashboard":
     else:
         st.info("Tidak ada data untuk ditampilkan.")
 
+    # ====== BAR CHART PER APLIKASI ======
+    st.markdown("### Perbandingan Sentimen per Aplikasi")
+
+    if len(data_dash) > 0:
+        counts_app = (
+            data_dash.groupby(["platform", "sentiment"])
+            .size()
+            .reset_index(name="jumlah")
+        )
+
+        fig_bar = px.bar(
+        counts_app,
+        x="platform",
+        y="jumlah",
+        color="sentiment",
+        barmode="group",
+        color_discrete_map={"positive": "#1E3A8A", "negative": "#3B82F6"}
+        )
+
+        st.plotly_chart(fig_bar, use_container_width=True)
+    else:
+        st.info("Tidak ada data untuk ditampilkan.")
+
         # ============================
     # COMMENT LENGTH + WORD CLOUD (SIDE BY SIDE, SAME SIZE)
     # ============================
