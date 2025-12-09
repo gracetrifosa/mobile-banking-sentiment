@@ -7,3 +7,4 @@ pillow==10.4.0
 openpyxl==3.1.5
 wordcloud
 joblib
+scikit-learn
