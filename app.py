@@ -1,3 +1,4 @@
+# app.py
 # ============================
 # MOBILE BANKING SENTIMENT APP
 # ============================
@@ -7,63 +8,71 @@ import pandas as pd
 import plotly.express as px
 import matplotlib.pyplot as plt
 import streamlit.components.v1 as components
-from wordcloud import WordCloud   # untuk word cloud
+from wordcloud import WordCloud
+import joblib
 
 st.set_page_config(page_title="Mobile Banking Sentiment", layout="wide")
 
 # ============================
-# CUSTOM CSS – Sidebar ala Splash (Navy Version)
+# CUSTOM CSS (NAVY SIDEBAR + CARD)
 # ============================
 
 st.markdown("""
 <style>
 
-/* ==== SIDEBAR CONTAINER ==== */
+/* ==== SIDEBAR CONTAINER (NAVY SOLID) ==== */
 [data-testid="stSidebar"] {
     background-color: #1E3A8A !important;
-    padding: 40px 30px !important;
+    padding: 20px 0 40px 0 !important;
 }
 
 /* ==== SIDEBAR TITLE ==== */
 .sidebar-title {
-    font-size: 34px;
-    font-weight: 900;
-    color: white;
-    margin-bottom: 35px;
+    font-size: 24px;
+    font-weight: 800;
+    color: #E5E7EB;
+    padding: 0 24px;
+    margin-bottom: 18px;
 }
 
-/* === TEKS MENU RADIO DI SIDEBAR JADI PUTIH === */
-[data-testid="stSidebar"] div[role="radiogroup"] * {
-    color: white !important;
-    fill: white !important;
+/* ==== MENU BUTTON DI SIDEBAR (GANTI RADIO) ==== */
+[data-testid="stSidebar"] .stButton > button {
+    width: 100%;
+    background-color: transparent;
+    border: none;
+    color: #E5E7EB;
+
+    display: flex !important;
+    justify-content: flex-start !important;
+    align-items: center;
+    text-align: left !important;
+
+    padding: 12px 16px;
+    border-radius: 0;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: none !important;
 }
 
-div[role="radiogroup"] > label span {
-    color: white !important;
+/* HOVER */
+[data-testid="stSidebar"] .stButton > button:hover {
+    background-color: #102459;
+    color: #FFFFFF;
 }
 
-[data-testid="stSidebar"] label {
-    color: white !important;
+/* ACTIVE / FOCUS (TANPA OREN) */
+[data-testid="stSidebar"] .stButton > button:focus,
+[data-testid="stSidebar"] .stButton > button:active,
+[data-testid="stSidebar"] .stButton > button:focus-visible {
+    background-color: #0B1A3F !important;
+    color: #FFFFFF !important;
+    border-bottom: 1px solid rgba(148,163,184,0.6) !important;
+    box-shadow: none !important;
+    outline: none !important;
 }
 
-/* ==== RADIO BULLET ==== */
-[data-testid="stSidebar"] input[type="radio"] {
-    transform: scale(1.3);
-    accent-color: #FACC15 !important;
-}
-
-/* ==== SPACING ANTAR MENU ==== */
-div[role="radiogroup"] > label {
-    margin-bottom: 18px !important;
-}
-
-/* ==== GARIS PEMBATAS ==== */
-.sidebar-line {
-    height: 1px;
-    background-color: rgba(255,255,255,0.3);
-    margin: 30px 0;
-}
-
+/* ==== MAIN ==== */
 .main {background-color: #F8FAFC;}
 
 .title {
@@ -83,8 +92,57 @@ div[role="radiogroup"] > label {
     margin-bottom: 20px;
 }
 
+/* CARD Sentiment Analysis */
+.sa-card {
+    background-color: #FFFFFF;
+    padding: 20px 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(15,23,42,0.12);
+    margin-bottom: 8px;
+}
+
+/* PERBESAR SEDIKIT FONT PLACEHOLDER TEXTAREA */
+textarea::placeholder {
+    font-size: 14px;
+}
+
 </style>
 """, unsafe_allow_html=True)
+
+# ============================
+# LOAD MODEL NAIVE BAYES
+# ============================
+
+@st.cache_resource
+def load_nb_model():
+    vec = joblib.load("nb_vectorizer.pkl")
+    model = joblib.load("nb_model.pkl")
+    return vec, model
+
+vec_nb, nb_model = load_nb_model()
+
+
+def analyze_sentiment_text(text: str):
+    """Prediksi sentimen kalimat (positive/negative) pakai model Naive Bayes."""
+    if text is None or str(text).strip() == "":
+        return 0.0, "neutral"
+
+    t = str(text).lower()
+    X_vec = vec_nb.transform([t])
+
+    proba = nb_model.predict_proba(X_vec)[0]   # [P(negatif), P(positif)]
+    pred_label = nb_model.predict(X_vec)[0]    # 'positif' / 'negatif'
+
+    if pred_label == "positif":
+        label = "positive"
+    elif pred_label == "negatif":
+        label = "negative"
+    else:
+        label = pred_label
+
+    score = float(proba[1] - proba[0])
+    return score, label
+
 
 # ============================
 # LOAD DATA
@@ -120,11 +178,18 @@ def load_data():
     })
 
     df = df[df["sentiment"].isin(["positive", "negative"])]
-
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
     return df
 
+
 df = load_data()
+
+TOTAL_DOC = len(df)
+POS_DOC = int((df["sentiment"] == "positive").sum())
+NEG_DOC = int((df["sentiment"] == "negative").sum())
+
+# akurasi global dari hasil uji di colab
+GLOBAL_ACCURACY = 0.905  # 90,5%
 
 # ============================
 # SIDEBAR MENU
@@ -132,24 +197,26 @@ df = load_data()
 
 st.sidebar.markdown("<div class='sidebar-title'>Menu</div>", unsafe_allow_html=True)
 
-menu = st.sidebar.radio(
-    "",
-    ["Home", "Dashboard", "Data", "About"]
-)
+options = ["Home", "Dashboard", "Sentiment Analysis", "Data", "About"]
 
-st.sidebar.markdown("<div class='sidebar-line'></div>", unsafe_allow_html=True)
+if "page" not in st.session_state:
+    st.session_state["page"] = "Home"
 
+for opt in options:
+    clicked = st.sidebar.button(opt, key=f"nav_{opt}")
+    if clicked:
+        st.session_state["page"] = opt
+
+menu = st.session_state["page"]
 
 # ============================
-# HOME PAGE – LANDING PAGE
+# HOME PAGE
 # ============================
 
 if menu == "Home":
 
     st.markdown("""
     <style>
-
-    /* HERO SECTION */
     .hero {
         width: 100%;
         background-color: #1E3A8A;
@@ -174,7 +241,7 @@ if menu == "Home":
     .hero-btn {
         margin-top: 22px;
         display: inline-block;
-        background-color: #FACC15;
+        background-color: #FACC15;  
         color: black;
         padding: 12px 28px;
         border-radius: 8px;
@@ -182,8 +249,7 @@ if menu == "Home":
         text-decoration: none;
     }
 
-    /* SECTION TITLES */
-    .section-title {
+    .section-title { 
         text-align: center;
         font-size: 30px;
         font-weight: 900;
@@ -191,14 +257,13 @@ if menu == "Home":
         margin-bottom: 8px;
     }
 
-    .section-sub {
+    .section-sub { 
         text-align: center;
         font-size: 16px;
         margin-bottom: 30px;
         color: #475569;
     }
 
-    /* CARD SMALL */
     .card3 {
         background: white;
         padding: 25px;
@@ -214,11 +279,9 @@ if menu == "Home":
         margin-bottom: 10px;
         font-weight: 800;
     }
-
     </style>
     """, unsafe_allow_html=True)
 
-    # HERO
     st.markdown("""
     <div class="hero">
         <div class="hero-title">Analisis Sentimen BCA Mobile & BRImo</div>
@@ -227,23 +290,14 @@ if menu == "Home":
     </div>
     """, unsafe_allow_html=True)
 
-    # ============================
-    # METRIC (CENTERED)
-    # ============================
-
     total = len(df)
     bca = len(df[df.platform == "BCA Mobile"])
     bri = len(df[df.platform == "BRImo"])
 
     colL, colA, colB, colC, colR = st.columns([3, 2, 2, 2, 1])
-
     colA.metric("Total Review", total)
     colB.metric("BCA Mobile", bca)
     colC.metric("BRImo", bri)
-
-    # ============================
-    # METODOLOGI SECTION
-    # ============================
 
     st.markdown("""
     <div style="margin-top: 40px;" id="metodologi"></div>
@@ -280,10 +334,6 @@ if menu == "Home":
         </div>
         """, unsafe_allow_html=True)
 
-    # ============================
-    # INFO SECTION
-    # ============================
-
     st.markdown("""
     <div class="section-title" style="margin-top:40px;">Apa itu BCA Mobile & BRImo?</div>
     """, unsafe_allow_html=True)
@@ -296,49 +346,54 @@ if menu == "Home":
         border-radius: 20px;
         box-shadow: 0 4px 14px rgba(0,0,0,0.1);
         text-align: center;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
     .info-text {
-
-    
+        text-align: center;
+        font-size: 14px;
+        margin-bottom: 24px;
+        color: #475569;
+        line-height: 1.7;
     }
 
     .info-subtitle {
-        font-size: 24px;
+        font-size: 20px;
         color: #1E3A8A;
         font-weight: 800;
-        margin-top: 30px;
+        margin-top: 10px;
         margin-bottom: 18px;
     }
 
     .info-list {
-        font-size: 19px;
+        font-size: 14px;
         line-height: 1.9;
         display: inline-block;
         text-align: left;
-        font-weight: 500;
+        font-weight: 400;
+        color: #475569;
     }
     </style>
 
     <div class="info-box">
 
         <div class="info-text">
-            <b>BCA Mobile</b> dan <b>BRImo</b> adalah aplikasi mobile banking untuk transaksi digital seperti pembayaran, transfer, cek saldo, dan pengelolaan keuangan.
+            BCA Mobile dan BRImo adalah aplikasi mobile banking untuk transaksi digital seperti
+            pembayaran, transfer, cek saldo, dan pengelolaan keuangan.
         </div>
 
         <div class="info-subtitle">Bagaimana Cara Kerjanya?</div>
 
         <ol class="info-list">
-            <li><b>Pengumpulan Data</b> – Mengambil komentar dari Google PlayStore.</li>
-            <li><b>Analisis Sentimen</b> – Mengklasifikasikan komentar menjadi positif dan negatif.</li>
-            <li><b>Rekomendasi</b> – Menyusun rekomendasi berdasarkan hasil analisis.</li>
+            <li>Pengumpulan Data – Mengambil komentar dari Google Play Store.</li>
+            <li>Analisis Sentimen – Mengklasifikasikan komentar menjadi positif dan negatif.</li>
+            <li>Rekomendasi – Menyusun rekomendasi berdasarkan hasil analisis.</li>
         </ol>
-
+        
     </div>
     """
 
     components.html(html_info, height=550)
-
 
 
 # ============================
@@ -349,113 +404,233 @@ elif menu == "Dashboard":
 
     st.markdown("<h1 class='title'>Sentiment Dashboard</h1>", unsafe_allow_html=True)
 
-    col1, col2 = st.columns([1,1])
-    pilih_app = col1.selectbox("Pilih Aplikasi", ["All", "BCA Mobile", "BRImo"])
-    pilih_sentimen = col2.selectbox("Pilih Sentimen", ["All", "positive", "negative"])
+    # ---------- FILTER ATAS ----------
+    fcol1, fcol2 = st.columns(2)
 
+    with fcol1:
+        pilih_app = st.selectbox("Pilih Aplikasi", ["All", "BCA Mobile", "BRImo"])
+
+    with fcol2:
+        pilih_sentimen = st.selectbox("Pilih Sentimen", ["All", "positive", "negative"])
+
+    # apply filter ke data
     data_dash = df.copy()
     if pilih_app != "All":
         data_dash = data_dash[data_dash.platform == pilih_app]
     if pilih_sentimen != "All":
         data_dash = data_dash[data_dash.sentiment == pilih_sentimen]
 
-    st.markdown("###  Sentiment Summary")
-    c1, c2 = st.columns(2)
-    c1.metric("Positive", len(data_dash[data_dash.sentiment == "positive"]))
-    c2.metric("Negative", len(data_dash[data_dash.sentiment == "negative"]))
+    # ===================== ROW 1 : PIE + BAR =====================
 
-    st.markdown("###  Sentiment Distribution")
-    if len(data_dash) > 0:
-        pie = px.pie(
-            data_dash,
-            names="sentiment",
-            color="sentiment",
-            color_discrete_map={"positive": "#1E3A8A", "negative": "#3B82F6"}
-        )
+    row1_col1, row1_col2 = st.columns(2)
 
-        pie.update_layout(
-            legend=dict(x=0.75, y=0.5, font=dict(size=14))
-        )
+    # ---- PIE CHART DISTRIBUSI SENTIMEN ----
+    with row1_col1:
+        st.markdown("### Sentiment Distribution")
 
-        st.plotly_chart(pie, use_container_width=True)
-    else:
-        st.info("Tidak ada data untuk ditampilkan.")
+        if len(data_dash) > 0:
+            pie = px.pie(
+                data_dash,
+                names="sentiment",
+                color="sentiment",
+                color_discrete_map={"positive": "#1E3A8A", "negative": "#3B82F6"}
+            )
+            pie.update_layout(
+                legend=dict(x=0.75, y=0.5, font=dict(size=12)),
+                margin=dict(l=0, r=0, t=30, b=0),
+                height=250   # <<< di sini kamu atur tingginya (misal 300–400)
+            )
+            st.plotly_chart(pie, use_container_width=True)
+        else:
+            st.info("Tidak ada data untuk ditampilkan.")
 
-    # ====== BAR CHART PER APLIKASI ======
-    st.markdown("### Perbandingan Sentimen per Aplikasi")
+    # ---- BAR CHART PER APLIKASI ----
+    with row1_col2:
+        st.markdown("### Bar Chart")
 
-    if len(data_dash) > 0:
-        counts_app = (
-            data_dash.groupby(["platform", "sentiment"])
-            .size()
-            .reset_index(name="jumlah")
-        )
+        if len(data_dash) > 0:
+            counts_app = (
+                data_dash.groupby(["platform", "sentiment"])
+                .size()
+                .reset_index(name="jumlah")
+            )
 
-        fig_bar = px.bar(
-        counts_app,
-        x="platform",
-        y="jumlah",
-        color="sentiment",
-        barmode="group",
-        color_discrete_map={"positive": "#1E3A8A", "negative": "#3B82F6"}
-        )
+            fig_bar = px.bar(
+                counts_app,
+                x="platform",
+                y="jumlah",
+                color="sentiment",
+                barmode="group",
+                color_discrete_map={"positive": "#1E3A8A", "negative": "#3B82F6"}
+            )
+            fig_bar.update_layout(
+                margin=dict(l=0, r=0, t=30, b=0),
+                height=350
+            )
+            st.plotly_chart(fig_bar, use_container_width=True)
+        else:
+            st.info("Tidak ada data untuk ditampilkan.")
 
-        st.plotly_chart(fig_bar, use_container_width=True)
-    else:
-        st.info("Tidak ada data untuk ditampilkan.")
+        # ===================== ROW 2 : LENGTH + WORDCLOUD =====================
 
-        # ============================
-    # COMMENT LENGTH + WORD CLOUD (SIDE BY SIDE, SAME SIZE)
-    # ============================
+    row2_col1, row2_col2 = st.columns(2)
 
-    if len(data_dash) > 0:
-        col_len, col_wc = st.columns(2)
+     # ===================== ROW 2 : LENGTH + WORDCLOUD =====================
 
-        # --- KIRI: Comment Length Distribution ---
-        with col_len:
-            st.markdown("### Comment Length Distribution")
+    row2_col1, row2_col2 = st.columns(2)
+
+    # ---- COMMENT LENGTH DISTRIBUTION ----
+    with row2_col1:
+        st.markdown("### Comment Length Distribution")
+
+        if len(data_dash) > 0:
             data_dash["length"] = data_dash["review"].astype(str).apply(len)
 
-            fig = px.histogram(
+            fig_len = px.histogram(
                 data_dash,
                 x="length",
                 nbins=50,
                 color="sentiment",
                 color_discrete_map={"positive": "#1E3A8A", "negative": "#3B82F6"}
             )
-
-            fig.update_layout(
-                legend=dict(x=0.92, y=0.95, font=dict(size=12)),
-                margin=dict(l=10, r=10, t=30, b=20),
-                height=400        # tinggi plot histogram
+            fig_len.update_layout(
+                legend=dict(x=0.92, y=0.95, font=dict(size=10)),
+                margin=dict(l=0, r=0, t=30, b=0),
+                height=320                # <<< tinggi disamain
             )
 
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig_len, use_container_width=True)
+        else:
+            st.info("Tidak ada data untuk ditampilkan.")
 
-        # --- KANAN: Word Cloud ---
-        with col_wc:
-            st.markdown("### Word Cloud – Most Frequent Words")
+    # ---- WORD CLOUD ----
+    with row2_col2:
+        st.markdown("### Word Cloud – Most Frequent Words")
 
+        if len(data_dash) > 0:
             all_text = " ".join(data_dash["review"].astype(str).tolist())
+            if all_text.strip() != "":
+                wc = WordCloud(
+                    width=800,             # agak lebar
+                    height=350,            # <<< sama: 350px
+                    background_color="white",
+                    colormap="Blues",
+                    max_words=50
+                ).generate(all_text)
 
-            wc = WordCloud(
-                width=800,        # lebar kanvas
-                height=600,       # tinggi kanvas = 400 (sama spt histogram)
-                background_color="white",
-                colormap="Blues",
-                max_words=20
-            ).generate(all_text)
+                # ukuran figure disesuaikan dengan tinggi 350px
+                fig_wc, ax_wc = plt.subplots(figsize=(6, 3.5))
+                ax_wc.imshow(wc, interpolation="bilinear")
+                ax_wc.axis("off")
 
-            # ukuran figur matplotlib, pakai rasio sama
-            fig_wc, ax_wc = plt.subplots(figsize=(8, 4))
-            ax_wc.imshow(wc, interpolation="bilinear")
-            ax_wc.axis("off")
+                st.pyplot(fig_wc, use_container_width=True)
+            else:
+                st.info("Teks kosong, tidak dapat membentuk word cloud.")
+        else:
+            st.info("Tidak ada data untuk ditampilkan.")
 
-            st.pyplot(fig_wc, use_container_width=True)
 
-    else:
-        st.info("Tidak ada data untuk ditampilkan / membuat word cloud.")
+# ============================
+# SENTIMENT ANALYSIS PAGE
+# ============================
 
+elif menu == "Sentiment Analysis":
+
+    st.markdown("<h1 class='title'>Sentiment Analysis</h1>", unsafe_allow_html=True)
+
+    col_pred_left, col_pred_right = st.columns([2.3, 1.7])
+
+    # ----- KIRI: FORM INPUT -----
+    with col_pred_left:
+        st.markdown("#### Masukkan Kalimat Ulasan")
+        user_text = st.text_area(
+            "Response",
+            placeholder='contoh: "pelayanannya cepat dan aplikasinya mudah digunakan"',
+            height=130
+        )
+
+        if st.button("Analisis"):
+            score, label_pred = analyze_sentiment_text(user_text)
+            st.session_state["last_pred_label"] = label_pred
+            st.session_state["last_pred_score"] = score
+
+        pred_label = st.session_state.get("last_pred_label", None)
+        pred_score = st.session_state.get("last_pred_score", None)
+
+    # ----- KANAN: PROSES + HASIL ANALISIS -----
+    with col_pred_right:
+        st.markdown(f"""
+        <div style="background-color:#1E3A8A;
+                    padding:12px 18px;
+                    border-radius:12px;
+                    max-width: 500px;
+                    margin: 0 0 16px auto;
+                    text-align:center;
+                    color:#E5E7EB;">
+            <h4 style="margin-top:0;margin-bottom:10px;color:#FFFFFF;">Proses</h4>
+            <p style="margin:0;font-size:14px;">
+                <b>Total Label</b><br>
+                positive : 1<br>
+                negative : 1
+            </p>
+            <p style="margin-top:12px;font-size:14px;">
+                <b>Document by Label</b><br>
+                Total Document : {TOTAL_DOC}<br>
+                positive : {POS_DOC}<br>
+                negative : {NEG_DOC}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if pred_label is not None:
+            if pred_label == "positive":
+                warna_label = "#16A34A"
+                teks_label = "positive"
+            elif pred_label == "negative":
+                warna_label = "#DC2626"
+                teks_label = "negative"
+            else:
+                warna_label = "#6B7280"
+                teks_label = "neutral"
+
+            st.markdown(f"""
+            <div style="background-color:white;
+                        padding:18px 20px;
+                        border-radius:12px;
+                        box-shadow:0 4px 10px rgba(15,23,42,0.12);">
+                <h4 style="margin-top:0;margin-bottom:10px;color:#0F172A;">Hasil Analisis</h4>
+                <div style="background-color:{warna_label};
+                            color:white;
+                            padding:10px 14px;
+                            border-radius:8px;
+                            margin-bottom:10px;
+                            text-align:center;
+                            font-weight:600;">
+                    Hasil Sentimen : {teks_label}
+                </div>
+                <div style="background-color:#1E3A8A;
+                            color:white;
+                            padding:10px 14px;
+                            border-radius:8px;
+                            text-align:center;
+                            font-weight:600;">
+                    Akurasi Model (data uji) : {GLOBAL_ACCURACY*100:.2f}%
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div style="background-color:white;
+                        padding:18px 20px;
+                        border-radius:12px;
+                        box-shadow:0 4px 10px rgba(15,23,42,0.12);">
+                <h4 style="margin-top:0;margin-bottom:10px;color:#0F172A;">Hasil Analisis</h4>
+                <p style="font-size:14px;color:#475569;">
+                    Belum ada analisis. Silakan masukkan kalimat ulasan pada kolom di sebelah kiri
+                    lalu tekan tombol <b>Analisis</b>.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
 
 
 # ============================
@@ -472,11 +647,10 @@ elif menu == "Data":
         "platform": "Aplikasi",
         "review": "Review",
         "sentiment": "Sentimen",
-        "stemming": "Cleaned Text"
+        "stemming": "Cleaned Text",
     })
 
     st.dataframe(table, use_container_width=True, height=600)
-
 
 
 # ============================
@@ -490,25 +664,29 @@ elif menu == "About":
     st.markdown("""
     <div class='card' style='font-size:16px; line-height:1.7;'>
        <h3> Deskripsi Aplikasi</h3>
-<p>
-Aplikasi ini dirancang untuk menganalisis sentimen publik terhadap layanan mobile banking 
-<b>BCA Mobile</b> dan <b>BRImo</b>, berdasarkan ulasan pengguna dan ditampilkan dalam bentuk visualisasi grafik yang mudah dipahami.
-</p>
+       <p>
+       Aplikasi ini dirancang untuk menganalisis sentimen publik terhadap layanan mobile banking 
+       <b>BCA Mobile</b> dan <b>BRImo</b>, berdasarkan ulasan pengguna dan ditampilkan dalam bentuk visualisasi grafik yang mudah dipahami.
+       </p>
 
-<h3> Fitur Utama</h3>
-<ul>
-    <li>Analisis komentar positif & negatif</li>
-    <li>Perbandingan sentimen antar aplikasi</li>
-    <li>Visualisasi grafik interaktif</li>
-    <li>Tampilan data komentar yang telah diproses</li>
-</ul>
+       <h3> Fitur Utama</h3>
+       <ul>
+           <li>Analisis komentar positif & negatif</li>
+           <li>Perbandingan sentimen antar aplikasi</li>
+           <li>Visualisasi grafik interaktif</li>
+           <li>Tampilan data komentar yang telah diproses</li>
+           <li>Fitur analisis kalimat untuk uji sentimen secara langsung</li>
+       </ul>
 
-<h3>‍ Pengembang</h3>
-<p>
-Aplikasi ini dikembangkan oleh Grace Trifosa Sagala (NIM 825220125) sebagai bagian dari Tugas Akhir di Universitas Tarumanagara. Tujuannya adalah memberikan pemahaman yang lebih mendalam mengenai opini pengguna terhadap layanan mobile banking melalui analisis sentimen yang terstruktur dan mudah dipahami.</b>.
-</p>
+       <h3>‍Pengembang</h3>
+       <p>
+       Aplikasi ini dikembangkan oleh Grace Trifosa Sagala (NIM 825220125) sebagai bagian dari Tugas Akhir di Universitas Tarumanagara. 
+       Tujuannya adalah memberikan pemahaman yang lebih mendalam mengenai opini pengguna terhadap layanan mobile banking 
+       melalui analisis sentimen yang terstruktur dan mudah dipahami.
+       </p>
 
-<h3> Kontak</h3>
-Jika Anda memiliki pertanyaan, saran, atau masukan, silakan hubungi melalui email: grace.825220125@stu.untar.ac.id
+       <h3> Kontak</h3>
+       Jika Anda memiliki pertanyaan, saran, atau masukan, silakan hubungi melalui email: 
+       grace.825220125@stu.untar.ac.id
     </div>
     """, unsafe_allow_html=True)
