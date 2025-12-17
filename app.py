@@ -642,12 +642,14 @@ elif menu == "Data":
     st.markdown("<h1 class='title'>Sentiment Data</h1>", unsafe_allow_html=True)
     st.markdown("### View Data")
 
-    table = df[["platform", "review", "sentiment", "stemming"]]
+    table = df[["userName","review","platform", "stemming","sentiment"]]
     table = table.rename(columns={
-        "platform": "Aplikasi",
+        "userName": "Username",
         "review": "Review",
-        "sentiment": "Sentimen",
+        "platform": "App",
         "stemming": "Cleaned Text",
+        "sentiment": "Sentimen",
+     
     })
 
     st.dataframe(table, use_container_width=True, height=600)
