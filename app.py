@@ -1,7 +1,5 @@
 # app.py
-# ============================
 # MOBILE BANKING SENTIMENT APP
-# ============================
 
 import streamlit as st
 import pandas as pd
@@ -13,14 +11,12 @@ import joblib
 
 st.set_page_config(page_title="Mobile Banking Sentiment", layout="wide")
 
-# ============================
-# CUSTOM CSS (NAVY SIDEBAR + CARD)
-# ============================
+# CUSTOM CSS
 
 st.markdown("""
 <style>
 
-/* ==== SIDEBAR CONTAINER (NAVY SOLID) ==== */
+/* ==== SIDEBAR CONTAINER ==== */
 [data-testid="stSidebar"] {
     background-color: #1E3A8A !important;
     padding: 20px 0 40px 0 !important;
@@ -35,7 +31,7 @@ st.markdown("""
     margin-bottom: 18px;
 }
 
-/* ==== MENU BUTTON DI SIDEBAR (GANTI RADIO) ==== */
+/* ==== MENU BUTTON DI SIDEBAR ==== */
 [data-testid="stSidebar"] .stButton > button {
     width: 100%;
     background-color: transparent;
@@ -61,7 +57,7 @@ st.markdown("""
     color: #FFFFFF;
 }
 
-/* ACTIVE / FOCUS (TANPA OREN) */
+/* ACTIVE / FOCUS */
 [data-testid="stSidebar"] .stButton > button:focus,
 [data-testid="stSidebar"] .stButton > button:active,
 [data-testid="stSidebar"] .stButton > button:focus-visible {
@@ -109,9 +105,7 @@ textarea::placeholder {
 </style>
 """, unsafe_allow_html=True)
 
-# ============================
 # LOAD MODEL NAIVE BAYES
-# ============================
 
 @st.cache_resource
 def load_nb_model():
@@ -144,9 +138,7 @@ def analyze_sentiment_text(text: str):
     return score, label
 
 
-# ============================
 # LOAD DATA
-# ============================
 
 @st.cache_data
 def load_data():
@@ -191,9 +183,7 @@ NEG_DOC = int((df["sentiment"] == "negative").sum())
 # akurasi global dari hasil uji di colab
 GLOBAL_ACCURACY = 0.905  # 90,5%
 
-# ============================
 # SIDEBAR MENU
-# ============================
 
 st.sidebar.markdown("<div class='sidebar-title'>Menu</div>", unsafe_allow_html=True)
 
@@ -209,9 +199,7 @@ for opt in options:
 
 menu = st.session_state["page"]
 
-# ============================
 # HOME PAGE
-# ============================
 
 if menu == "Home":
 
@@ -395,10 +383,7 @@ if menu == "Home":
 
     components.html(html_info, height=550)
 
-
-# ============================
 # DASHBOARD PAGE
-# ============================
 
 elif menu == "Dashboard":
 
@@ -529,10 +514,7 @@ elif menu == "Dashboard":
         else:
             st.info("Tidak ada data untuk ditampilkan.")
 
-
-# ============================
 # SENTIMENT ANALYSIS PAGE
-# ============================
 
 elif menu == "Sentiment Analysis":
 
@@ -632,10 +614,7 @@ elif menu == "Sentiment Analysis":
             </div>
             """, unsafe_allow_html=True)
 
-
-# ============================
 # DATA PAGE
-# ============================
 
 elif menu == "Data":
 
@@ -655,9 +634,7 @@ elif menu == "Data":
     st.dataframe(table, use_container_width=True, height=600)
 
 
-# ============================
 # ABOUT PAGE
-# ============================
 
 elif menu == "About":
 
